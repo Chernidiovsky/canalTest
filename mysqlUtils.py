@@ -24,6 +24,18 @@ def mysqlCursor(database):
     return db, cursor
 
 
+def executeMysql(database, sql):
+    db, cursor = mysqlCursor(database)
+    try:
+        cursor.execute(sql)
+        db.commit()
+        return True
+    except:
+        traceback.print_exc()
+        db.rollback()
+        return False
+
+
 def importMysqlAsPandas(database, sql):  # 单个db内的sql
     db, cursor = mysqlCursor(database)
     df = pd.read_sql(sql, db)
