@@ -10,17 +10,14 @@ def statusChgHist(rowChangeRec):
     try:
         db = rowChangeRec["db"]
         table = rowChangeRec["table"]
-        event_type = rowChangeRec["event_type"]
-        data = rowChangeRec["data"]
-
-        if db == "test" and table == "foobar" and event_type == 2:
+        eventType = rowChangeRec["event_type"]
+        data = rowChangeRec["data"]["after"]
+        if db == "test" and table == "foobar" and eventType == 2:
             dt = datetime.today().strftime("%y-%m-%d %H:%M:%S")
             print(u"======== %s ========" % dt)
-            data = data["after"]
             name, status = data["name"], data["status"]
-            data = [[name, status, dt]]
-            df = pd.DataFrame(data=data, columns=["name", "status", "update_time"])
-            print("%s的status更新为%s" % (name, status))
+            df = pd.DataFrame(data=[[name, status, dt]], columns=["name", "status", "update_time"])
+            print("%s的status更新为%s\n" % (name, status))
             exportPandasToMysql(df, "test", "foobar_status_his")
     except:
         traceback.print_exc()

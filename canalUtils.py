@@ -44,7 +44,7 @@ class ParseCanal:
                         for column in rowChange.afterColumns:
                             formatData[column.name] = column.value
                     else:
-                        formatData['before'] = formatData['after'] = dict()
+                        formatData['before'], formatData['after'] = dict(), dict()
                         for column in rowChange.beforeColumns:
                             formatData['before'][column.name] = column.value
                         for column in rowChange.afterColumns:

@@ -39,5 +39,5 @@ def randomUpdate():
 
 if __name__ == "__main__":
     # createFakeData()
-    # executeMysql("test", "update foobar set status = 1 where id = 1")
-    randomUpdate()
+    executeMysql("test", "update foobar set status = 1 where id = 1")
+    # randomUpdate()
