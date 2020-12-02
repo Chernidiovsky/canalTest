@@ -1,52 +1,63 @@
-import time
-
+# -*- coding:utf-8 -*-
 from canal.client import Client
 from canal.protocol import EntryProtocol_pb2
-from mysqlUtils import IP
+from time import sleep
 
-client = Client()
-client.connect(host=IP)
-client.check_valid()
-client.subscribe()
 
-while True:
-    message = client.get(100)
-    entries = message['entries']
-    for entry in entries:
-        entry_type = entry.entryType
-        if entry_type in [EntryProtocol_pb2.EntryType.TRANSACTIONBEGIN, EntryProtocol_pb2.EntryType.TRANSACTIONEND]:
-            continue
-        row_change = EntryProtocol_pb2.RowChange()
-        row_change.MergeFromString(entry.storeValue)
-        event_type = row_change.eventType
-        header = entry.header
-        database = header.schemaName
-        table = header.tableName
-        for row in row_change.rowDatas:
-            format_data = dict()
-            if event_type == EntryProtocol_pb2.EventType.DELETE:
-                for column in row.beforeColumns:
-                    format_data = {
-                        column.name: column.value
-                    }
-            elif event_type == EntryProtocol_pb2.EventType.INSERT:
-                for column in row.afterColumns:
-                    format_data = {
-                        column.name: column.value
-                    }
-            else:
-                format_data['before'] = format_data['after'] = dict()
-                for column in row.beforeColumns:
-                    format_data['before'][column.name] = column.value
-                for column in row.afterColumns:
-                    format_data['after'][column.name] = column.value
-            data = dict(
-                db=database,
-                table=table,
-                event_type=event_type,
-                data=format_data,
-            )
-            print(data)
-    time.sleep(1)
+class ParseCanal:
+    def __init__(self, ip, interval):
+        """
+        ip: canal服务所在ip
+        interval: 每多少秒执行一次binlog抓取
+        """
+        self.ip = ip
+        self.interval = interval
 
-# client.disconnect()
+    def run(self, execution):
+        """
+        execution: 执行函数，要对mysql的binlog记录做何种操作，函数输入必须是rowChangeRec那样的字典
+        """
+        client = Client()
+        client.connect(host=self.ip)
+        client.check_valid()
+        client.subscribe()
+
+        while True:
+            message = client.get(100)
+            entries = message['entries']
+            for entry in entries:
+                entryType = entry.entryType
+                if entryType in [EntryProtocol_pb2.EntryType.TRANSACTIONBEGIN, EntryProtocol_pb2.EntryType.TRANSACTIONEND]:
+                    continue
+                rowChanges = EntryProtocol_pb2.RowChange()
+                rowChanges.MergeFromString(entry.storeValue)
+                eventType = rowChanges.eventType
+                header = entry.header
+                database = header.schemaName
+                table = header.tableName
+                for rowChange in rowChanges.rowDatas:
+                    formatData = dict()
+                    if eventType == EntryProtocol_pb2.EventType.DELETE:
+                        for column in rowChange.beforeColumns:
+                            formatData = {column.name: column.value}
+                    elif eventType == EntryProtocol_pb2.EventType.INSERT:
+                        for column in rowChange.afterColumns:
+                            formatData = {column.name: column.value}
+                    else:
+                        formatData['before'] = formatData['after'] = dict()
+                        for column in rowChange.beforeColumns:
+                            formatData['before'][column.name] = column.value
+                        for column in rowChange.afterColumns:
+                            formatData['after'][column.name] = column.value
+                    rowChangeRec = dict(
+                        db=database,
+                        table=table,
+                        event_type=eventType,
+                        data=formatData,
+                    )
+                    execution(rowChangeRec)
+            sleep(self.interval)
+
+
+if __name__ == "__main__":
+    ParseCanal("10.0.18.54", 1).run(print)
